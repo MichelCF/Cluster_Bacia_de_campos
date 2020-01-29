@@ -14,28 +14,49 @@ import xarray as xr
 import numpy as np
 import pandas as pd
 
+import matplotlib.ticker as mticker
+
 import cartopy.crs as ccrs
 import matplotlib.pyplot as plt
 
-def plot_points(data):
-    for row in range(len(data)):
-        row = data.iloc(row)
-        
-        
-        
-
-wind = xr.open_dataset('/media/ladsin/DATA/ERA5_wind/o_ERA5_wind_197901.nc') 
-
+def arredonda_float(numero_float):
+    numero = int(numero_float)
+    caso = numero_float - numero
+    if caso ==0:
+        return numero_float
+    elif caso >=-0.25:
+        return numero - 0.25
+    elif caso >=-0.50:
+        return numero - 0.50
+    elif caso >= -0.75:
+        return numero - 0.75
+    else:
+        return numero -1
+wind = xr.open_dataset('/media/ladsin/DATA/ERA5_wind/D_ERA5_wind_197901.nc') 
+topografia = xr.open_dataset('/home/ladsin/Área de Trabalho/Cluster_Bacia_de_campos/topografia_santos.grd').to_dataframe()
+topografia = topografia.reset_index([0,1])
+topografia1 = topografia.loc[topografia['z'] < -100]
+topografia1.columns = ['longitude','latitude','altura']
+topografia1.drop(columns =['altura'], inplace = True)
 wind = wind.to_dataframe()
 wind = wind.reset_index(['longitude','latitude','time'])
-wind['teste'] = np.ones(85932)
-#ind['teste'] = np.ones(124)
+topografia1['longitude'] = topografia1['longitude'].apply(lambda x: arredonda_float(x))
+topografia1['latitude'] = topografia1['latitude'].apply(lambda x: arredonda_float(x))
+teste = pd.merge(wind,topografia1, how='inner', on = ['longitude','latitude'])
+teste.drop_duplicates(inplace = True)
+
 
 
 fig = plt.figure()
 ax = fig.add_subplot(1, 1, 1,
                      projection=ccrs.PlateCarree())
-ax.set_extent([-40,-50,-21,-29])
-ax.scatter(wind.longitude,wind.latitude)
-ax.stock_img()
+ax.set_extent([-40,-50,-22,-29])
+ax.scatter(teste.longitude,teste.latitude)
 ax.coastlines()
+ax.gridlines()
+
+plt.show()
+
+
+
+
