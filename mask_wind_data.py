@@ -2,11 +2,9 @@
 # -*- coding: utf-8 -*-
 """
 Created on Wed Jan 29 09:51:15 2020
-
 @author: Michel Caiafa
 @Email:  Michel.Caiafa@gmail.com
 @Github: MichelCF
-
 """
 
 
@@ -31,30 +29,40 @@ def arredonda_float(numero_float):
     else:
         return numero -1
 
-wind = xr.open_dataset('/home/caiafa/Desktop/3_anos_wind/D_ERA5_wind_198001.nc')
+#Carrega os dados de vento
+wind = xr.open_dataset('/home/caiafa/Desktop/3_anos_wind/D_ERA5_wind_198001.nc').to_dataframe()
+#Carrega o arquivo de topografia
 topografia = xr.open_dataset('/home/caiafa/Desktop/Cluster_Bacia_de_campos/topografia_santos.grd').to_dataframe()
+#Separa o index
 topografia = topografia.reset_index([0,1])
-topografia1 = topografia.loc[topografia['z'] < -100]
-topografia1.columns = ['longitude','latitude','altura']
-topografia1.drop(columns =['altura'], inplace = True)
-wind = wind.to_dataframe()
-wind = wind.reset_index(['longitude','latitude','time'])
-topografia1['longitude'] = topografia1['longitude'].apply(lambda x: arredonda_float(x))
-topografia1['latitude'] = topografia1['latitude'].apply(lambda x: arredonda_float(x))
-teste = pd.merge(wind,topografia1, how='inner', on = ['longitude','latitude'])
-teste.drop_duplicates(inplace = True)
-teste['norm_u10'] = teste['u10'] / np.linalg.norm(teste['u10'])
-teste['norm_v10'] = teste['v10'] / np.linalg.norm(teste['v10'])
+#Filtra todos os dados maiores que -100
+topografia = topografia.loc[topografia['z'] < -100]
+topografia.drop(columns =['z'], inplace = True)
+topografia.columns = ['longitude','latitude']
 
-cluster = teste[['latitude','longitude','norm_u10','norm_v10']]
+#separa o index
+wind = wind.reset_index(['longitude','latitude','time'])
+topografia['longitude'] = topografia['longitude'].apply(lambda x: arredonda_float(x))
+topografia['latitude'] = topografia['latitude'].apply(lambda x: arredonda_float(x))
+#remove os arquivos replicados
+topografia.drop_duplicates(inplace = True)
+
+#Apenas os dados de vento sobre o oceano
+wind = pd.merge(wind,topografia, how='inner', on = ['longitude','latitude'])
+
+wind['norm_u10'] = wind['u10'] / np.linalg.norm(wind['u10'])
+wind['norm_v10'] = wind['v10'] / np.linalg.norm(wind['v10'])
+
+#Prepara o k means e roda
 kmeans = KMeans(n_clusters=3)
-cluster['categoria'] = kmeans.fit_predict(cluster)
+wind['categoria'] = kmeans.fit_predict(wind[['norm_u10','norm_v10']])
+
 
 fig = plt.figure()
 ax = fig.add_subplot(1, 1, 1,
                      projection=ccrs.PlateCarree())
 ax.set_extent([-40,-50,-22,-29])
-ax.scatter(cluster.longitude,cluster.latitude, c=cluster.categoria)
+ax.scatter(wind.longitude,wind.latitude, c=wind.categoria)
 ax.coastlines()
 ax.gridlines()
 
