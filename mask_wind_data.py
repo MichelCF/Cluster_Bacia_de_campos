@@ -9,65 +9,87 @@ Created on Wed Jan 29 09:51:15 2020
 
 
 import xarray as xr
-from sklearn.cluster import KMeans
-import numpy as np
 import pandas as pd
+from sklearn.cluster import KMeans
+from sklearn.preprocessing import Normalizer
+import numpy as np
 import cartopy.crs as ccrs
 import matplotlib.pyplot as plt
 
-def arredonda_float(numero_float):
-    numero = int(numero_float)
-    caso = numero_float - numero
-    if caso ==0:
-        return numero_float
-    elif caso >=-0.25:
-        return numero - 0.25
-    elif caso >=-0.50:
-        return numero - 0.50
-    elif caso >= -0.75:
-        return numero - 0.75
-    else:
-        return numero -1
+    
+def media_cluster(dados):
+    '''
+    Calcula a maior frequencia das categorias em um periodo
+    Input dataframe com longitude,latitude,categoria 
+    Output um dataframe, com a maior frequencia de cada categoria, para cada lon lat
+    '''
+    saida = pd.DataFrame(columns = ['longitude','latitude','categoria'])
+    pontos = dados.drop_duplicates(subset = ['longitude','latitude'])
+    for i in range(len(pontos)):
+        ponto = pontos.iloc[i]
+        media = dados[(dados['latitude'].values == ponto.latitude) & (dados['longitude'].values == ponto.longitude)]
+        ponto = [ponto.longitude,ponto.latitude,media['categoria'].mode()[0]]
+        saida.loc[i] = ponto
+    return saida
 
-#Carrega os dados de vento
-wind = xr.open_dataset('/home/caiafa/Desktop/3_anos_wind/D_ERA5_wind_198001.nc').to_dataframe()
-#Carrega o arquivo de topografia
-topografia = xr.open_dataset('/home/caiafa/Desktop/Cluster_Bacia_de_campos/topografia_santos.grd').to_dataframe()
-#Separa o index
-topografia = topografia.reset_index([0,1])
-#Filtra todos os dados maiores que -100
-topografia = topografia.loc[topografia['z'] < -100]
-topografia.drop(columns =['z'], inplace = True)
-topografia.columns = ['longitude','latitude']
-
-#separa o index
-wind = wind.reset_index(['longitude','latitude','time'])
-topografia['longitude'] = topografia['longitude'].apply(lambda x: arredonda_float(x))
-topografia['latitude'] = topografia['latitude'].apply(lambda x: arredonda_float(x))
-#remove os arquivos replicados
-topografia.drop_duplicates(inplace = True)
-
-#Apenas os dados de vento sobre o oceano
-wind = pd.merge(wind,topografia, how='inner', on = ['longitude','latitude'])
-
-wind['norm_u10'] = wind['u10'] / np.linalg.norm(wind['u10'])
-wind['norm_v10'] = wind['v10'] / np.linalg.norm(wind['v10'])
-
-#Prepara o k means e roda
-kmeans = KMeans(n_clusters=3)
-wind['categoria'] = kmeans.fit_predict(wind[['norm_u10','norm_v10']])
+def prepara_dados_vento(caminho_dados, caminho_mascara):
+    '''
+    Mascara o dados de vento
+    Input Caminho para seus dados e caminho para mascara que filtra a costa
+    Output um dataframe com seus dados filtrados dentro do oceano
+    '''
+    vento = xr.open_mfdataset(caminho_dados).to_dataframe()
+    topografia = pd.read_csv(caminho_mascara)
+    vento = vento.reset_index(['longitude','latitude','time'])
+    vento = pd.merge(vento,topografia, how='inner', on = ['longitude','latitude'])
+    return vento[['longitude','latitude','time','u10','v10']]
 
 
-fig = plt.figure()
-ax = fig.add_subplot(1, 1, 1,
+def kmeans_bacia(dados, numero_k = 3):
+    '''
+    Gera as categorias e os centroides
+    Input os dados que vão ser clusterizados e o numero de cluster
+    Output o primeiro parametro é a lista com as categorias, o segundo parametro são os centroides
+    '''
+    kmeans = KMeans(n_clusters=numero_k)
+    kmeans = kmeans.fit(dados)
+    return [kmeans.fit_predict(dados),  kmeans.cluster_centers_]
+
+def plot_bacia(dados, localizacao = [-39,-51,-21,-30], salvar =None):
+    '''
+    Cria as imagens da bacia com pontos
+    input dataframe com longitude,latitude e categoria, uma lista da com o tamanho da região
+    caminho para salvar a imagem
+    Output uma imagem e uma copia salva dela casa tenha passado um caminho no salvar
+    '''
+    fig = plt.figure()
+    ax = fig.add_subplot(1, 1, 1,
                      projection=ccrs.PlateCarree())
-ax.set_extent([-40,-50,-22,-29])
-ax.scatter(wind.longitude,wind.latitude, c=wind.categoria)
-ax.coastlines()
-ax.gridlines()
+    ax.set_extent(localizacao)
+    ax.scatter(dados.longitude,dados.latitude, c=dados.categoria)
+    ax.coastlines()
+    ax.gridlines()
+    if salvar !=None:
+        plt.savefig(salvar, format='png')
+    plt.show()
 
-plt.show()
+def pega_dia(data, dia):
+    '''pega um dia de um arquivo nc
+    '''
+    pass
+def lista_dias(data):
+    '''
+    lista todos os dias de um arquivo nc
+    '''
+    
+    return pd.to_datetime(data['time']).dt.date
 
+def kmeans_dia(dados, numero_k = 3):
+    rodada = dados['time'].drop_duplicates()
+    
+        
+        
+    
 
 
 
