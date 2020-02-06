@@ -20,7 +20,7 @@ from collections import Counter
     
 def media_cluster(dados):
     '''
-    Calcula a maior frequencia das categorias em um periodo
+    Calcula a maior frequencia das categorias em um periodo olhando para coluna
     Input dataframe com longitude,latitude,categoria 
     Output um dataframe, com a maior frequencia de cada categoria, para cada lon lat
     '''
