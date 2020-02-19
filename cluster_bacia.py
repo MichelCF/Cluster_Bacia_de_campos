@@ -17,6 +17,8 @@ import cartopy.crs as ccrs
 import matplotlib.pyplot as plt
 from collections import Counter
 
+
+
     
 def media_cluster(dados):
     '''
@@ -46,13 +48,17 @@ def prepara_dados_vento(caminho_dados, caminho_mascara):
     return vento[['longitude','latitude','time','u10','v10']]
 
 
-def kmeans_bacia(dados, numero_k = 3):
+def kmeans_bacia(dados, numero_k = 3,init='ra'):
     '''
+    Gera as categorias e os centroides
+    Input os dados que vão ser clusterizados e o ndef kmeans_bacia(dados, numero_k = 3,init='k-means++'):
     Gera as categorias e os centroides
     Input os dados que vão ser clusterizados e o numero de cluster
     Output o primeiro parametro é a lista com as categorias, o segundo parametro são os centroides
     '''
-    kmeans = KMeans(n_clusters=numero_k)
+   # print(init)
+    #time.sleep(2.4)
+    kmeans = KMeans(n_clusters=numero_k,init = init)
     kmeans = kmeans.fit(dados)
     return [kmeans.fit_predict(dados)]#,  kmeans.cluster_centers_]
 
@@ -79,19 +85,29 @@ def conta_frequencia_todas_linhas(data):
 	mais_comum_linha = pd.DataFrame()
 	for i in range(len(data)):
 		mais_comum_linha[str(i)] = [Counter(data.iloc[i].values).most_common(1)[0][0]]
-		print( Counter(data.iloc[i].values).most_common(1)[0][0])
 	return mais_comum_linha.transpose()
 
-def kmeans_dia(dados, numero_k = 3):
-	rodadas = dados['time'].drop_duplicates()
-	resultados_cluster = pd.DataFrame()
-	resultados_centroide = pd.DataFrame()
-	for rodada in range(len(rodadas)):
-		print(type(rodadas.iloc[rodada]))
-		dia = dados.loc[dados['time'] == rodadas[rodada]]
-		dia.drop(columns = ['time'], inplace=True)
-		dia = kmeans_bacia(dia)
-		resultados_cluster['dia_'+str(rodada)] = dia[0]
+def centroides_inicias(dia, pontos):
+    centroides_inicias = []
+    for ponto in pontos:
+        #print(ponto)
+        longitude,latitude = ponto
+        teste =dia[(dia['longitude'].values == longitude) & (dia['latitude'].values == latitude)]
+        #print(teste.u10.values,teste.v10.values)
+        centroides_inicias.append([teste.u10.values[0],teste.v10.values[0]])
+    return centroides_inicias
+  
+def kmeans_dia(dados, numero_k = 3,centroides = [[-42.5, -24.25], [-46.25, -26.0], [-43.0, -26.5]]):
+    rodadas = dados['time'].drop_duplicates()
+    resultados_cluster = pd.DataFrame()
+	#resultados_centroide = pd.DataFrame()
+    for rodada in range(len(rodadas)):
+        dia = dados.loc[dados['time'] == rodadas[rodada]]
+        dia.drop(columns = ['time'], inplace=True)
+        #inicial = centroides_inicias(dia,centroides)
+        dia.drop(columns= ['longitude', 'latitude'], inplace = True)
+        dia = kmeans_bacia(dia)
+        resultados_cluster['dia_'+str(rodada)] = dia[0]
 		#resultados_centroide['dia_'+str(rodada)] = dia[1]
-		
-	return conta_frequencia_todas_linhas(resultados_cluster),resultados_cluster
+    return conta_frequencia_todas_linhas(resultados_cluster),resultados_cluster
+
