@@ -48,7 +48,7 @@ def prepara_dados_vento(caminho_dados, caminho_mascara):
     return vento[['longitude','latitude','time','u10','v10']]
 
 
-def kmeans_bacia(dados, numero_k = 3,init='ra'):
+def kmeans_bacia(dados, numero_k = 3):
     '''
     Gera as categorias e os centroides
     Input os dados que vão ser clusterizados e o ndef kmeans_bacia(dados, numero_k = 3,init='k-means++'):
@@ -58,7 +58,7 @@ def kmeans_bacia(dados, numero_k = 3,init='ra'):
     '''
    # print(init)
     #time.sleep(2.4)
-    kmeans = KMeans(n_clusters=numero_k,init = init)
+    kmeans = KMeans(n_clusters=numero_k)
     kmeans = kmeans.fit(dados)
     return [kmeans.fit_predict(dados)]#,  kmeans.cluster_centers_]
 
